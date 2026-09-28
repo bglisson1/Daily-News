@@ -1,0 +1,281 @@
+# =============================================================================
+# BLAKE'S DAILY NEWS — the only file you need to edit
+# =============================================================================
+#
+# This file decides what shows up on the page. You do not need to touch any
+# other file.
+#
+# HOW TO ADD A NEWS SOURCE
+#   1. Find the section it belongs in (National, Business, and so on).
+#   2. Copy one of the "- name / enabled / url / max_items" blocks.
+#   3. Paste it under "sources:" in that section.
+#   4. Change the name, paste the RSS or Atom web address into url,
+#      and set max_items (how many headlines to keep from that source).
+#
+# HOW TO REMOVE A NEWS SOURCE
+#   Change "enabled: yes" to "enabled: no" under that source.
+#   Leave the rest in place so you can turn it back on later.
+#   You can also delete the whole block if you are sure.
+#
+# HOW TO ADD OR REMOVE A KEYWORD
+#   block_keywords: a headline that contains one of these is skipped.
+#   boost_keywords: a headline that contains one of these is listed higher
+#   and has a better chance of becoming the big top story.
+#   Add a new line starting with "  - " or delete a line you do not want.
+#   Matching ignores capital letters. "Tampa" and "tampa" are the same.
+#
+# THE BIG TOP HEADLINE
+#   The page picks the story that shows up in the most different sources.
+#   Words in boost_keywords give that story an extra lift, so Tampa Bay,
+#   Florida, the Bucs, and markets can outrank a one-off national item.
+#
+# After you save this file on GitHub, the site rebuilds by itself.
+# =============================================================================
+
+site:
+  # Words at the top of the page. Keep the quotes.
+  title: "BLAKE'S DAILY NEWS"
+  subtitle: "Tampa Bay"
+
+  # Headlines older than this many hours are left off the page.
+  max_age_hours: 36
+
+  # How many headlines sit in the short centered list under the big story.
+  splash_count: 8
+
+  # How many of those centered headlines are shown in red.
+  red_splash: 2
+
+  # How many links at the top of each section are shown in red.
+  red_per_section: 2
+
+  # Upper limit on headlines (the big story, the centered list, and the
+  # columns combined). If the feeds run long, the oldest ordinary links
+  # are dropped first so the page stays about this size.
+  max_headlines: 85
+
+# Headlines containing any of these phrases are skipped.
+# Delete a line to stop blocking that phrase. Add a line to block a new one.
+# Use a real word or phrase. A tiny fragment will hide too many stories.
+block_keywords:
+  - horoscope
+  - lottery
+  - crossword
+  - coupon code
+  - sponsored content
+  - advertorial
+  - gift guide
+  - "you won't believe"
+
+# These phrases lift a story toward the top of its section and toward
+# the big headline. Add anything you want to see more of.
+boost_keywords:
+  - tampa
+  - tampa bay
+  - st. petersburg
+  - st petersburg
+  - clearwater
+  - hillsborough
+  - pinellas
+  - pasco
+  - hernando
+  - sarasota
+  - florida
+  - buccaneers
+  - bucs
+  - bulls
+  - usf
+  - interest rate
+  - federal reserve
+  - inflation
+  - recession
+  - stock market
+  - wall street
+  - mortgage
+  - social security
+  - retirement
+  - tax cut
+  - taxes
+  - hurricane
+
+# -----------------------------------------------------------------------------
+# SECTIONS
+# column: 1 is the left column, 2 is the middle, 3 is the right.
+# On a phone they stack in that same order: 1, then 2, then 3.
+# To move a section, change its column number.
+# max_items is the most headlines to take from that one source (newest first).
+# -----------------------------------------------------------------------------
+sections:
+  - name: National
+    column: 1
+    sources:
+      - name: Fox News
+        enabled: yes
+        url: "https://moxie.foxnews.com/google-publisher/latest.xml"
+        max_items: 6
+
+      - name: New York Post
+        enabled: yes
+        url: "https://nypost.com/feed/"
+        max_items: 5
+
+      - name: Washington Examiner
+        enabled: yes
+        url: "https://www.washingtonexaminer.com/feed/"
+        max_items: 4
+
+      - name: National Review
+        enabled: yes
+        url: "https://www.nationalreview.com/feed/"
+        max_items: 3
+
+      - name: Daily Wire
+        enabled: yes
+        url: "https://www.dailywire.com/feeds/rss.xml"
+        max_items: 3
+
+      - name: The Hill
+        enabled: yes
+        url: "https://thehill.com/feed/"
+        max_items: 5
+
+      - name: Axios
+        enabled: yes
+        url: "https://www.axios.com/feeds/feed.rss"
+        max_items: 4
+
+      - name: BBC World
+        enabled: yes
+        url: "https://feeds.bbci.co.uk/news/world/rss.xml"
+        max_items: 4
+
+      # AP shut its public RSS feed. This Google News feed only includes
+      # stories published on apnews.com. Google's link opens the AP story.
+      - name: AP News
+        enabled: yes
+        url: "https://news.google.com/rss/search?q=site:apnews.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+        max_items: 4
+        strip_publisher_suffix: yes
+
+      # Reuters shut its public RSS feed. Same idea as AP, limited to reuters.com.
+      - name: Reuters
+        enabled: yes
+        url: "https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+        max_items: 4
+        strip_publisher_suffix: yes
+
+  - name: Business & Markets
+    column: 2
+    sources:
+      - name: CNBC
+        enabled: yes
+        url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"
+        max_items: 5
+
+      - name: MarketWatch
+        enabled: yes
+        url: "https://feeds.marketwatch.com/marketwatch/topstories/"
+        max_items: 4
+
+      - name: Bloomberg Markets
+        enabled: yes
+        url: "https://feeds.bloomberg.com/markets/news.rss"
+        max_items: 4
+
+      # The main Yahoo Finance news feed was stuck on older stories.
+      # This address is Yahoo's live market-headline feed.
+      - name: Yahoo Finance
+        enabled: yes
+        url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US"
+        max_items: 4
+
+      - name: Seeking Alpha
+        enabled: yes
+        url: "https://seekingalpha.com/market_currents.xml"
+        max_items: 3
+
+  - name: Tampa Bay & Florida
+    column: 2
+    sources:
+      # tampabay.com/feed/ no longer exists. This is the Times' working feed.
+      - name: Tampa Bay Times
+        enabled: yes
+        url: "https://www.tampabay.com/arc/outboundfeeds/rss/category/news/?outputType=xml"
+        max_items: 6
+
+      # fox13news.com/feed is a dead link. This is the station's local-news feed.
+      - name: Fox 13 Tampa Bay
+        enabled: yes
+        url: "https://www.fox13news.com/rss/category/local-news"
+        max_items: 5
+
+      - name: WFLA News Channel 8
+        enabled: yes
+        url: "https://www.wfla.com/news/feed/"
+        max_items: 5
+
+      # floridapolitics.com/feed/ answers "403 Forbidden" to this script.
+      # This Google News feed only includes that site's stories.
+      - name: Florida Politics
+        enabled: yes
+        url: "https://news.google.com/rss/search?q=site:floridapolitics.com+when:2d&hl=en-US&gl=US&ceid=US:en"
+        max_items: 5
+        strip_publisher_suffix: yes
+
+  - name: Sports
+    column: 3
+    sources:
+      - name: Tampa Bay Buccaneers
+        enabled: yes
+        url: "https://www.buccaneers.com/rss/news"
+        max_items: 4
+
+      - name: Pewter Report
+        enabled: yes
+        url: "https://www.pewterreport.com/feed/"
+        max_items: 3
+
+      - name: USF Bulls Football
+        enabled: yes
+        url: "https://gousfbulls.com/rss?path=football"
+        max_items: 4
+
+      # ESPN's public RSS feeds returned an empty page when tested.
+      # CBS Sports and Yahoo Sports are the stand-ins for general sports.
+      - name: CBS Sports
+        enabled: yes
+        url: "https://www.cbssports.com/rss/headlines/nfl/"
+        max_items: 4
+
+      - name: Yahoo Sports
+        enabled: yes
+        url: "https://sports.yahoo.com/rss/"
+        max_items: 4
+
+      - name: Tampa Bay Times Sports
+        enabled: yes
+        url: "https://www.tampabay.com/arc/outboundfeeds/rss/category/sports/?outputType=xml"
+        max_items: 3
+
+  - name: Tech & Odd
+    column: 3
+    sources:
+      - name: New York Post Tech
+        enabled: yes
+        url: "https://nypost.com/tech/feed/"
+        max_items: 3
+
+      - name: Fox News Tech
+        enabled: yes
+        url: "https://moxie.foxnews.com/google-publisher/tech.xml"
+        max_items: 3
+
+      - name: The Verge
+        enabled: yes
+        url: "https://www.theverge.com/rss/index.xml"
+        max_items: 3
+
+      - name: New York Post Weird
+        enabled: yes
+        url: "https://nypost.com/weird-but-true/feed/"
+        max_items: 2

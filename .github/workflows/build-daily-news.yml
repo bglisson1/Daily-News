@@ -1,0 +1,73 @@
+# Rebuilds the page and publishes it to GitHub Pages.
+# One broken news feed does not fail this workflow. build.py skips that feed
+# and keeps going. A broken feeds.yml file will fail the run on purpose, so
+# a typo is visible in the Actions log.
+
+name: Build daily news
+
+on:
+  schedule:
+    # GitHub runs these clocks in UTC and does not shift for daylight saving.
+    # Eastern Daylight Time (EDT, March–November) is UTC-4.
+    # Eastern Standard Time (EST, November–March) is UTC-5.
+    #
+    # 10:00 UTC = 6:00 AM EDT / 5:00 AM EST
+    - cron: "0 10 * * *"
+    # 15:30 UTC = 11:30 AM EDT / 10:30 AM EST
+    - cron: "30 15 * * *"
+    # 20:30 UTC = 4:30 PM EDT / 3:30 PM EST
+    - cron: "30 20 * * *"
+
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build the page
+        run: python build.py
+
+      - name: Stage the page for GitHub Pages
+        run: |
+          mkdir -p _site
+          cp index.html _site/index.html
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
