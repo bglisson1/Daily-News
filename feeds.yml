@@ -24,6 +24,14 @@
 #   Add a new line starting with "  - " or delete a line you do not want.
 #   Matching ignores capital letters. "Tampa" and "tampa" are the same.
 #
+# HOW TO KEEP A SECTION ON TOPIC
+#   Under a section you can add skip_url_parts and skip_keywords.
+#   skip_url_parts: the story is skipped when its link, or the feed's
+#     category, contains that text. /sports/ hides a sports link.
+#     /entertainment/ hides a celebrity page.
+#   skip_keywords: the story is skipped when the headline contains the phrase.
+#   The Sports section has neither list, so game stories stay there.
+#
 # THE BIG TOP HEADLINE
 #   The page picks the story that shows up in the most different sources.
 #   Words in boost_keywords give that story an extra lift, so Tampa Bay,
@@ -108,15 +116,61 @@ boost_keywords:
 sections:
   - name: National
     column: 1
+    # The general Fox and New York Post feeds were mostly sports and celebrity
+    # items. This column uses their politics and US news feeds instead, and
+    # still drops anything that looks like sports or entertainment.
+    skip_url_parts:
+      - /sports/
+      - /sport/
+      - /entertainment/
+      - /celebrity/
+    skip_keywords:
+      - nfl
+      - nba
+      - mlb
+      - nhl
+      - ncaa
+      - pga
+      - qb
+      - lb
+      - linebacker
+      - quarterback
+      - presidents cup
+      - touchdown
+      - home run
+      - world series
+      - super bowl
+      - college football
+      - march madness
+      - stanley cup
+      - world cup
+      - premier league
+      - mets
+      - yankees
+      - raiders
+      - astros
+      - dodgers
+      - mariners
+      - red sox
+      - white sox
+      - new york jets
     sources:
-      - name: Fox News
+      # Latest-headlines feed mixed in Mets, Raiders, and the like.
+      # Politics and US news stay in this column. Sports stays in Sports.
+      - name: Fox News Politics
         enabled: yes
-        url: "https://moxie.foxnews.com/google-publisher/latest.xml"
-        max_items: 6
+        url: "https://moxie.foxnews.com/google-publisher/politics.xml"
+        max_items: 4
 
-      - name: New York Post
+      - name: Fox News US
         enabled: yes
-        url: "https://nypost.com/feed/"
+        url: "https://moxie.foxnews.com/google-publisher/us.xml"
+        max_items: 3
+
+      # nypost.com/feed/ is the whole paper, including sports and Page Six.
+      - name: New York Post Politics
+        enabled: yes
+        url: "https://nypost.com/politics/feed/"
         max_items: 5
 
       - name: Washington Examiner
@@ -166,6 +220,10 @@ sections:
 
   - name: Business & Markets
     column: 2
+    # A markets roundup sometimes links a game story. Leave those for Sports.
+    skip_url_parts:
+      - /sports/
+      - /sport/
     sources:
       - name: CNBC
         enabled: yes
@@ -196,6 +254,10 @@ sections:
 
   - name: Tampa Bay & Florida
     column: 2
+    # Local sports links belong in the Sports column.
+    skip_url_parts:
+      - /sports/
+      - /sport/
     sources:
       # tampabay.com/feed/ no longer exists. This is the Times' working feed.
       - name: Tampa Bay Times
@@ -259,6 +321,9 @@ sections:
 
   - name: Tech & Odd
     column: 3
+    skip_url_parts:
+      - /sports/
+      - /sport/
     sources:
       - name: New York Post Tech
         enabled: yes

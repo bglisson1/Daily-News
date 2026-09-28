@@ -97,6 +97,8 @@ def main() -> int:
                 column=column,
                 block_keywords=config.get("block_keywords") or [],
                 boost_keywords=config.get("boost_keywords") or [],
+                skip_url_parts=section.get("skip_url_parts") or [],
+                skip_keywords=section.get("skip_keywords") or [],
                 max_age=max_age,
                 now=now,
             )
@@ -187,6 +189,8 @@ def fetch_source(
     column: int,
     block_keywords: list,
     boost_keywords: list,
+    skip_url_parts: list,
+    skip_keywords: list,
     max_age: timedelta,
     now: datetime,
 ) -> tuple[FeedReport, list[Item]]:
@@ -219,6 +223,8 @@ def fetch_source(
                 strip_suffix=strip_suffix,
                 block_keywords=block_keywords,
                 boost_keywords=boost_keywords,
+                skip_url_parts=skip_url_parts,
+                skip_keywords=skip_keywords,
                 max_age=max_age,
                 now=now,
             )
@@ -272,6 +278,8 @@ def entry_to_item(
     strip_suffix: bool,
     block_keywords: list,
     boost_keywords: list,
+    skip_url_parts: list,
+    skip_keywords: list,
     max_age: timedelta,
     now: datetime,
 ) -> Item | None:
@@ -296,6 +304,8 @@ def entry_to_item(
 
     if any(keyword_in(title.lower(), keyword) for keyword in block_keywords):
         return None
+    if section_skips(title, link, entry, skip_url_parts, skip_keywords):
+        return None
 
     boosts = [str(keyword) for keyword in boost_keywords if keyword_in(title.lower(), keyword)]
     return Item(
@@ -308,6 +318,37 @@ def entry_to_item(
         image=extract_image(entry),
         boosts=boosts,
     )
+
+
+def section_skips(title: str, link: str, entry, skip_url_parts: list, skip_keywords: list) -> bool:
+    """True when this section asked to leave the story out."""
+    categories = entry_categories(entry)
+    link_text = link.lower()
+    for part in skip_url_parts:
+        piece = str(part).strip().lower()
+        if not piece:
+            continue
+        if piece in link_text:
+            return True
+        token = piece.strip("/")
+        if token and any(token in category for category in categories):
+            return True
+    headline = title.lower()
+    if any(keyword_in(headline, keyword) for keyword in skip_keywords):
+        return True
+    return False
+
+
+def entry_categories(entry) -> list[str]:
+    categories: list[str] = []
+    for tag in entry.get("tags") or []:
+        if isinstance(tag, dict):
+            term = tag.get("term") or tag.get("label") or ""
+        else:
+            term = str(tag)
+        if term:
+            categories.append(str(term).lower())
+    return categories
 
 
 def entry_time(entry) -> datetime | None:
