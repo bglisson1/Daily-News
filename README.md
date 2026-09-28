@@ -68,7 +68,7 @@ Five sections:
 
 | Section | What it is |
 | --- | --- |
-| National | Fox News, New York Post, Washington Examiner, National Review, Daily Wire, The Hill, Axios, BBC World, AP, Reuters |
+| National | Fox News politics, Fox News US, New York Post politics, Washington Examiner, National Review, Daily Wire, The Hill, Axios, BBC World, AP, Reuters. Sports and entertainment links are left out of this column. |
 | Business & Markets | CNBC, MarketWatch, Bloomberg Markets, Yahoo Finance, Seeking Alpha |
 | Tampa Bay & Florida | Tampa Bay Times, Fox 13 Tampa Bay, WFLA, Florida Politics |
 | Sports | Buccaneers, Pewter Report, USF Bulls football, CBS Sports, Yahoo Sports, Tampa Bay Times sports |
