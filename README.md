@@ -18,6 +18,8 @@ GitHub turns off scheduled updates on a public project after 60 days with no new
 
 Headlines older than 36 hours are left off. If the same story shows up in several places, it is shown once. The big headline is the story that showed up in the most places, with an extra lift for words like Tampa, Florida, the Bucs, and markets.
 
+A spinning red siren appears above that headline only for a truly huge story (an assassination, a president elected, a war declared, a major terror attack, a sitting president resigning or being impeached, and events like those). On the normal setting, `siren_override: auto`, the top story has to contain a phrase from `siren_keywords` and be carried by at least `siren_min_sources` different outlets (8) in the last `siren_max_age_hours` (6). Set `siren_override` to `on` to force the light, optionally with `siren_headline` and `siren_url`. Set it to `off` to keep the light dark. Leave it on `auto`.
+
 ## The one setup step
 
 GitHub has to be told to publish the page. Do this once:

@@ -39,6 +39,19 @@
 #   Words in boost_keywords give that story an extra lift, so Tampa Bay,
 #   Florida, the Bucs, and markets can outrank a one-off national item.
 #
+# THE SIREN
+#   A spinning red light above the top headline, for a truly huge story only.
+#   siren_override (with or without quotes):
+#     auto  normal rule (this is the default)
+#     on    force the light on
+#     off   force the light off
+#   On auto, the top story must contain a siren_keywords phrase AND be
+#   carried by siren_min_sources different outlets in the last
+#   siren_max_age_hours. Ordinary news does not light it.
+#   With siren_override set to on, you can also set siren_headline and
+#   siren_url to choose the line. Leave those two out to keep the real
+#   top story.
+#
 # After you save this file on GitHub, the site rebuilds by itself.
 # =============================================================================
 
@@ -64,6 +77,15 @@ site:
   # are dropped first so the page stays about this size.
   # Politics is its own full column, so the cap sits above the old 85.
   max_headlines: 120
+
+  # Siren. Leave this on auto. See the note at the top of this file.
+  # Quotes keep YAML from reading on/off as yes/no. auto, on, and off all work.
+  siren_override: "auto"
+  siren_min_sources: 8
+  siren_max_age_hours: 6
+  # Only used when siren_override is on. Uncomment to force a specific line:
+  # siren_headline: "PRESIDENT RESIGNS"
+  # siren_url: "https://example.com/the-story"
 
 # Headlines containing any of these phrases are skipped.
 # Delete a line to stop blocking that phrase. Add a line to block a new one.
@@ -108,6 +130,28 @@ boost_keywords:
   - tax cut
   - taxes
   - hurricane
+
+# Phrases that can light the siren. The top story must contain one of these
+# AND be covered by siren_min_sources outlets in the last siren_max_age_hours.
+# Add a line to watch for another kind of huge story. Delete a line to ignore it.
+siren_keywords:
+  - assassinated
+  - assassination
+  - killed
+  - dies
+  - dead at
+  - elected president
+  - wins presidency
+  - wins the presidency
+  - declares war
+  - declaration of war
+  - war declared
+  - terror attack
+  - terrorist attack
+  - resigns
+  - impeached
+  - martial law
+  - nuclear
 
 # -----------------------------------------------------------------------------
 # SECTIONS
