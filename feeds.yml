@@ -30,12 +30,27 @@
 #     category, contains that text. /sports/ hides a sports link.
 #     /entertainment/ hides a celebrity page.
 #   skip_keywords: the story is skipped when the headline contains the phrase.
-#   The Sports section has neither list, so game stories stay there.
+#   require_keywords: on a mixed feed, the headline or link has to contain
+#     one of these phrases or the story is left off. A team site can set
+#     require_match: no, because every story there is already that team.
 #
 # THE BIG TOP HEADLINE
 #   The page picks the story that shows up in the most different sources.
 #   Words in boost_keywords give that story an extra lift, so Tampa Bay,
 #   Florida, the Bucs, and markets can outrank a one-off national item.
+#
+# THE SIREN
+#   A spinning red light above the top headline, for a truly huge story only.
+#   siren_override (with or without quotes):
+#     auto  normal rule (this is the default)
+#     on    force the light on
+#     off   force the light off
+#   On auto, the top story must contain a siren_keywords phrase AND be
+#   carried by siren_min_sources different outlets in the last
+#   siren_max_age_hours. Ordinary news does not light it.
+#   With siren_override set to on, you can also set siren_headline and
+#   siren_url to choose the line. Leave those two out to keep the real
+#   top story.
 #
 # After you save this file on GitHub, the site rebuilds by itself.
 # =============================================================================
@@ -60,7 +75,17 @@ site:
   # Upper limit on headlines (the big story, the centered list, and the
   # columns combined). If the feeds run long, the oldest ordinary links
   # are dropped first so the page stays about this size.
-  max_headlines: 85
+  # Politics is its own full column, so the cap sits above the old 85.
+  max_headlines: 120
+
+  # Siren. Leave this on auto. See the note at the top of this file.
+  # Quotes keep YAML from reading on/off as yes/no. auto, on, and off all work.
+  siren_override: "auto"
+  siren_min_sources: 8
+  siren_max_age_hours: 6
+  # Only used when siren_override is on. Uncomment to force a specific line:
+  # siren_headline: "PRESIDENT RESIGNS"
+  # siren_url: "https://example.com/the-story"
 
 # Headlines containing any of these phrases are skipped.
 # Delete a line to stop blocking that phrase. Add a line to block a new one.
@@ -106,6 +131,28 @@ boost_keywords:
   - taxes
   - hurricane
 
+# Phrases that can light the siren. The top story must contain one of these
+# AND be covered by siren_min_sources outlets in the last siren_max_age_hours.
+# Add a line to watch for another kind of huge story. Delete a line to ignore it.
+siren_keywords:
+  - assassinated
+  - assassination
+  - killed
+  - dies
+  - dead at
+  - elected president
+  - wins presidency
+  - wins the presidency
+  - declares war
+  - declaration of war
+  - war declared
+  - terror attack
+  - terrorist attack
+  - resigns
+  - impeached
+  - martial law
+  - nuclear
+
 # -----------------------------------------------------------------------------
 # SECTIONS
 # column: 1 is the left column, 2 is the middle, 3 is the right.
@@ -114,11 +161,99 @@ boost_keywords:
 # max_items is the most headlines to take from that one source (newest first).
 # -----------------------------------------------------------------------------
 sections:
-  - name: National
+  # Column 1 is the left column and the first column on a phone.
+  - name: Politics
     column: 1
-    # The general Fox and New York Post feeds were mostly sports and celebrity
-    # items. This column uses their politics and US news feeds instead, and
-    # still drops anything that looks like sports or entertainment.
+    # Sports, celebrity, and foreign-desk links stay out of this column.
+    skip_url_parts:
+      - /sports/
+      - /sport/
+      - /entertainment/
+      - /celebrity/
+      - /europe/
+    sources:
+      - name: Fox News Politics
+        enabled: yes
+        url: "https://moxie.foxnews.com/google-publisher/politics.xml"
+        max_items: 3
+
+      - name: New York Post Politics
+        enabled: yes
+        url: "https://nypost.com/politics/feed/"
+        max_items: 3
+
+      # The Examiner's politics-only feed had one fresh story.
+      # The main feed is politics and had a full set.
+      - name: Washington Examiner
+        enabled: yes
+        url: "https://www.washingtonexaminer.com/feed/"
+        max_items: 2
+
+      - name: Daily Caller
+        enabled: yes
+        url: "https://dailycaller.com/feed/"
+        max_items: 3
+
+      - name: Townhall
+        enabled: yes
+        url: "https://townhall.com/tipsheet/feed"
+        max_items: 2
+
+      - name: Breitbart Politics
+        enabled: yes
+        url: "https://www.breitbart.com/politics/feed/"
+        max_items: 2
+
+      # Reachable, but often only one story in a 36-hour window.
+      - name: The Federalist
+        enabled: yes
+        url: "https://thefederalist.com/feed/"
+        max_items: 2
+
+      - name: National Review
+        enabled: yes
+        url: "https://www.nationalreview.com/feed/"
+        max_items: 2
+
+      - name: Daily Wire
+        enabled: yes
+        url: "https://www.dailywire.com/feeds/rss.xml"
+        max_items: 2
+
+      - name: Just the News
+        enabled: yes
+        url: "https://justthenews.com/rss.xml"
+        max_items: 2
+
+      - name: RealClearPolitics
+        enabled: yes
+        url: "https://www.realclearpolitics.com/index.xml"
+        max_items: 2
+
+      - name: The Hill
+        enabled: yes
+        url: "https://thehill.com/homenews/feed/"
+        max_items: 3
+
+      # Axios does not publish a politics-only feed. This Google News
+      # feed is limited to politics stories on axios.com.
+      - name: Axios
+        enabled: yes
+        url: "https://news.google.com/rss/search?q=site:axios.com+politics+when:1d&hl=en-US&gl=US&ceid=US:en"
+        max_items: 3
+        strip_publisher_suffix: yes
+
+      # politico.com's own RSS answers "forbidden." This Google News feed
+      # is limited to stories on politico.com.
+      - name: Politico
+        enabled: yes
+        url: "https://news.google.com/rss/search?q=site:politico.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+        max_items: 3
+        strip_publisher_suffix: yes
+
+  - name: National
+    column: 3
+    # Straight news. Politics has its own column.
     skip_url_parts:
       - /sports/
       - /sport/
@@ -155,47 +290,9 @@ sections:
       - white sox
       - new york jets
     sources:
-      # Latest-headlines feed mixed in Mets, Raiders, and the like.
-      # Politics and US news stay in this column. Sports stays in Sports.
-      - name: Fox News Politics
-        enabled: yes
-        url: "https://moxie.foxnews.com/google-publisher/politics.xml"
-        max_items: 4
-
       - name: Fox News US
         enabled: yes
         url: "https://moxie.foxnews.com/google-publisher/us.xml"
-        max_items: 3
-
-      # nypost.com/feed/ is the whole paper, including sports and Page Six.
-      - name: New York Post Politics
-        enabled: yes
-        url: "https://nypost.com/politics/feed/"
-        max_items: 5
-
-      - name: Washington Examiner
-        enabled: yes
-        url: "https://www.washingtonexaminer.com/feed/"
-        max_items: 4
-
-      - name: National Review
-        enabled: yes
-        url: "https://www.nationalreview.com/feed/"
-        max_items: 3
-
-      - name: Daily Wire
-        enabled: yes
-        url: "https://www.dailywire.com/feeds/rss.xml"
-        max_items: 3
-
-      - name: The Hill
-        enabled: yes
-        url: "https://thehill.com/feed/"
-        max_items: 5
-
-      - name: Axios
-        enabled: yes
-        url: "https://www.axios.com/feeds/feed.rss"
         max_items: 4
 
       - name: BBC World
@@ -286,38 +383,57 @@ sections:
 
   - name: Sports
     column: 3
+    # Tampa Bay teams only. A mixed feed (the Times) has to mention one
+    # of these. Team sites are already only that team, so they set
+    # require_match: no. "5 Notes Against the Vikings" on the Bucs site
+    # would otherwise be dropped for not saying "Bucs."
+    require_keywords:
+      - bucs
+      - buccaneers
+      - usf
+      - bulls
+      - south florida
+      - rays
+      - lightning
+      - tampa
     sources:
       - name: Tampa Bay Buccaneers
         enabled: yes
         url: "https://www.buccaneers.com/rss/news"
         max_items: 4
+        require_match: no
 
       - name: Pewter Report
         enabled: yes
         url: "https://www.pewterreport.com/feed/"
         max_items: 3
+        require_match: no
 
       - name: USF Bulls Football
         enabled: yes
         url: "https://gousfbulls.com/rss?path=football"
         max_items: 4
+        require_match: no
 
-      # ESPN's public RSS feeds returned an empty page when tested.
-      # CBS Sports and Yahoo Sports are the stand-ins for general sports.
-      - name: CBS Sports
+      - name: Tampa Bay Rays
         enabled: yes
-        url: "https://www.cbssports.com/rss/headlines/nfl/"
-        max_items: 4
+        url: "https://www.mlb.com/rays/feeds/news/rss.xml"
+        max_items: 3
+        require_match: no
 
-      - name: Yahoo Sports
+      # The Lightning's own NHL feed came back empty.
+      # Raw Charge is a Lightning news site and it is updating.
+      - name: Tampa Bay Lightning
         enabled: yes
-        url: "https://sports.yahoo.com/rss/"
-        max_items: 4
+        url: "https://www.rawcharge.com/rss/index.xml"
+        max_items: 3
+        require_match: no
 
       - name: Tampa Bay Times Sports
         enabled: yes
         url: "https://www.tampabay.com/arc/outboundfeeds/rss/category/sports/?outputType=xml"
-        max_items: 3
+        max_items: 6
+        require_match: yes
 
   - name: Tech & Odd
     column: 3

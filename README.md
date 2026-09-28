@@ -18,6 +18,8 @@ GitHub turns off scheduled updates on a public project after 60 days with no new
 
 Headlines older than 36 hours are left off. If the same story shows up in several places, it is shown once. The big headline is the story that showed up in the most places, with an extra lift for words like Tampa, Florida, the Bucs, and markets.
 
+A spinning red siren appears above that headline only for a truly huge story (an assassination, a president elected, a war declared, a major terror attack, a sitting president resigning or being impeached, and events like those). On the normal setting, `siren_override: auto`, the top story has to contain a phrase from `siren_keywords` and be carried by at least `siren_min_sources` different outlets (8) in the last `siren_max_age_hours` (6). Set `siren_override` to `on` to force the light, optionally with `siren_headline` and `siren_url`. Set it to `off` to keep the light dark. Leave it on `auto`.
+
 ## The one setup step
 
 GitHub has to be told to publish the page. Do this once:
@@ -68,10 +70,11 @@ Five sections:
 
 | Section | What it is |
 | --- | --- |
-| National | Fox News politics, Fox News US, New York Post politics, Washington Examiner, National Review, Daily Wire, The Hill, Axios, BBC World, AP, Reuters. Sports and entertainment links are left out of this column. |
+| Politics | Left column, first on a phone. Fox News politics, New York Post politics, Washington Examiner, Daily Caller, Townhall, Breitbart, The Federalist, National Review, Daily Wire, Just the News, RealClearPolitics, The Hill, Axios, Politico. |
+| National | Fox News US, BBC World, AP, Reuters. Sports and entertainment links are left out. |
 | Business & Markets | CNBC, MarketWatch, Bloomberg Markets, Yahoo Finance, Seeking Alpha |
 | Tampa Bay & Florida | Tampa Bay Times, Fox 13 Tampa Bay, WFLA, Florida Politics |
-| Sports | Buccaneers, Pewter Report, USF Bulls football, CBS Sports, Yahoo Sports, Tampa Bay Times sports |
+| Sports | Tampa Bay only: Buccaneers, Pewter Report, USF Bulls football, Rays, Lightning, and Tampa Bay Times sports. A Times story has to name a Tampa Bay team. |
 | Tech & Odd | New York Post tech, Fox News tech, The Verge, New York Post weird news |
 
 On a phone the three columns stack into one column.
@@ -86,13 +89,17 @@ These were checked live. Every source in `feeds.yml` returned stories. A few of 
 | Yahoo Finance news | `finance.yahoo.com/news/rssindex` was stuck on stories from September 23, 2026. | Yahoo Finance's live market-headline feed. |
 | AP News | `apnews.com` no longer offers a public RSS feed (it answers "forbidden"). | A Google News feed limited to stories on apnews.com. The link opens the AP story. |
 | Reuters | The old Reuters RSS addresses are gone. | A Google News feed limited to stories on reuters.com. |
-| ESPN | `espn.com/espn/rss/nfl/news` came back empty. | CBS Sports for NFL news, and Yahoo Sports for general sports. |
+| ESPN, CBS Sports, Yahoo Sports | National sports feeds are not used. | The sports column is Tampa Bay teams only. |
 | Florida Politics | `floridapolitics.com/feed/` answers "forbidden" to an automatic download. | A Google News feed limited to floridapolitics.com. |
 | Tampa Bay Times | `tampabay.com/feed/` does not exist. | The Times' working news feed and sports feed (their Arc RSS addresses). |
 | Fox 13 Tampa Bay | `fox13news.com/feed` and `/rss` do not exist. | The station's own local-news feed, `fox13news.com/rss/category/local-news`. |
 | Daily Wire | `dailywire.com/rss.xml` is only a redirect page. | `dailywire.com/feeds/rss.xml`. |
 | USF Bulls football | `gousfbulls.com/rss.aspx` came back empty. | `gousfbulls.com/rss?path=football`. |
 | Odd news | UPI's odd-news feed answers "forbidden." Oddity Central's newest item was from September 18, 2026, outside the 36-hour window. | New York Post's Weird But True feed. |
-| Newsmax, The Federalist | Newsmax timed out. The Federalist feed answers "forbidden." | Not included. National Review and the Daily Wire cover that part of the mix. |
+| Newsmax | The feed timed out, so it is not included. | The Federalist feed does work and is in Politics, though it is often only one fresh story. |
+| Politico | `politico.com` RSS answers "forbidden." | A Google News feed limited to politico.com. |
+| Axios politics | Axios does not publish a politics-only feed. | A Google News feed of politics stories on axios.com. |
+| Tampa Bay Lightning | The NHL Lightning feed came back empty. | Raw Charge, a Lightning news site. |
+| Tampa Bay Rays | The team feed at mlb.com/rays works. | Used as-is. |
 
 Pewter Report and Tampa Bay Times sports are extra Bucs and local sports sources. Both returned fresh stories.

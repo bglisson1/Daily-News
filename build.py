@@ -19,7 +19,7 @@ import sys
 import traceback
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -99,6 +99,8 @@ def main() -> int:
                 boost_keywords=config.get("boost_keywords") or [],
                 skip_url_parts=section.get("skip_url_parts") or [],
                 skip_keywords=section.get("skip_keywords") or [],
+                require_keywords=section.get("require_keywords") or [],
+                require_match=source_requires_match(section, source),
                 max_age=max_age,
                 now=now,
             )
@@ -107,6 +109,15 @@ def main() -> int:
 
     clusters = cluster_items(items)
     banner, splash, sections = arrange(items, clusters, site)
+    siren_on, siren_reason = decide_siren(
+        banner=banner,
+        items=items,
+        site=site,
+        keywords=config.get("siren_keywords") or [],
+        now=now,
+    )
+    if siren_on and siren_mode(site.get("siren_override", "auto")) == "on":
+        banner = apply_siren_headline(banner, site, now)
 
     updated = datetime.now(EASTERN)
     page = render_page(
@@ -116,6 +127,7 @@ def main() -> int:
         splash=splash,
         sections=sections,
         section_order=config["sections"],
+        siren=siren_on,
     )
     OUTPUT_PATH.write_text(page, encoding="utf-8")
 
@@ -136,6 +148,7 @@ def main() -> int:
     if banner:
         outlets = sorted({item.source for item in items if item.cluster_id == banner.cluster_id})
         print(f"Top story ({len(outlets)} sources): {banner.title}")
+    print(f"Siren: {'ON' if siren_on else 'off'} ({siren_reason})")
     return 0
 
 
@@ -191,6 +204,8 @@ def fetch_source(
     boost_keywords: list,
     skip_url_parts: list,
     skip_keywords: list,
+    require_keywords: list,
+    require_match: bool,
     max_age: timedelta,
     now: datetime,
 ) -> tuple[FeedReport, list[Item]]:
@@ -225,6 +240,8 @@ def fetch_source(
                 boost_keywords=boost_keywords,
                 skip_url_parts=skip_url_parts,
                 skip_keywords=skip_keywords,
+                require_keywords=require_keywords,
+                require_match=require_match,
                 max_age=max_age,
                 now=now,
             )
@@ -280,6 +297,8 @@ def entry_to_item(
     boost_keywords: list,
     skip_url_parts: list,
     skip_keywords: list,
+    require_keywords: list,
+    require_match: bool,
     max_age: timedelta,
     now: datetime,
 ) -> Item | None:
@@ -299,12 +318,16 @@ def entry_to_item(
         title, publisher = split_publisher_suffix(title)
         if publisher:
             display_source = publisher
-    if not title:
+    # Google News titles look like "Mitch McConnell - Politico". The suffix
+    # makes a topic-page label long enough to pass the first check.
+    if not title or is_junk_title(title):
         return None
 
     if any(keyword_in(title.lower(), keyword) for keyword in block_keywords):
         return None
     if section_skips(title, link, entry, skip_url_parts, skip_keywords):
+        return None
+    if not passes_required(title, link, require_keywords, require_match):
         return None
 
     boosts = [str(keyword) for keyword in boost_keywords if keyword_in(title.lower(), keyword)]
@@ -318,6 +341,27 @@ def entry_to_item(
         image=extract_image(entry),
         boosts=boosts,
     )
+
+
+def source_requires_match(section: dict, source: dict) -> bool:
+    """Mixed feeds can be limited to headlines that name a topic.
+
+    A section's require_keywords list turns that on. A source can opt out
+    with require_match: no when every story from that site already belongs,
+    such as the Bucs' own feed.
+    """
+    keywords = section.get("require_keywords") or []
+    if "require_match" in source:
+        return as_bool(source.get("require_match"))
+    return bool(keywords)
+
+
+def passes_required(title: str, link: str, keywords: list, require_match: bool) -> bool:
+    if not require_match or not keywords:
+        return True
+    path = urlsplit(link).path.lower().replace("-", " ")
+    text = f"{title.lower()} {path}"
+    return any(keyword_in(text, keyword) for keyword in keywords)
 
 
 def section_skips(title: str, link: str, entry, skip_url_parts: list, skip_keywords: list) -> bool:
@@ -505,7 +549,7 @@ def is_junk_title(title: str) -> bool:
         return True
     if text.startswith("tag:"):
         return True
-    if "latest news" in text:
+    if "latest news" in text or "latest and breaking" in text:
         return True
     return False
 
@@ -687,6 +731,110 @@ def trim_to_cap(
             del by_section[name]
 
 
+def siren_mode(value) -> str:
+    """off, auto, or on. YAML turns bare on/off into True/False, so accept both."""
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    text = str("auto" if value is None else value).strip().lower()
+    if text in {"on", "yes", "true", "1"}:
+        return "on"
+    if text in {"off", "no", "false", "0"}:
+        return "off"
+    return "auto"
+
+
+def decide_siren(
+    banner: Item | None,
+    items: list[Item],
+    site: dict,
+    keywords: list,
+    now: datetime,
+) -> tuple[bool, str]:
+    """Whether the red siren lights. Rare on purpose.
+
+    auto (the default): the top story's headlines contain a siren keyword,
+    and that many different outlets published it inside the siren window.
+    on: always. off: never. Anything else is treated as auto.
+    """
+    mode = siren_mode(site.get("siren_override", "auto"))
+    if mode == "off":
+        return False, "siren_override is off"
+    if mode == "on":
+        return True, "siren_override is on"
+    if banner is None:
+        return False, "no top story"
+
+    try:
+        need = int(site.get("siren_min_sources", 8))
+    except (TypeError, ValueError):
+        need = 8
+    if need < 1:
+        need = 8
+    try:
+        hours = float(site.get("siren_max_age_hours", 6))
+    except (TypeError, ValueError):
+        hours = 6
+    if hours <= 0:
+        hours = 6
+
+    cluster = [item for item in items if item.cluster_id == banner.cluster_id]
+    window = timedelta(hours=hours)
+    fresh = {
+        item.source.strip().lower()
+        for item in cluster
+        if item.source.strip() and now - item.published <= window
+    }
+    matched = any(
+        keyword_in(item.title.lower(), keyword)
+        for item in cluster
+        for keyword in keywords
+    )
+    detail = f"{len(fresh)} sources in the last {hours:g} hours, need {need}"
+    if not matched:
+        return False, f"top story does not match siren_keywords ({detail})"
+    if len(fresh) < need:
+        return False, f"top story matches a siren keyword but only {detail}"
+    return True, f"top story matches a siren keyword and {detail}"
+
+
+def apply_siren_headline(banner: Item | None, site: dict, now: datetime) -> Item | None:
+    """Optional forced line. Used only after the siren has already been turned on."""
+    headline = str(site.get("siren_headline") or "").strip()
+    url = str(site.get("siren_url") or "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        url = ""
+    if not headline and not url:
+        return banner
+    if banner is None:
+        if not headline:
+            return None
+        return Item(
+            title=headline,
+            link=url,
+            source="",
+            section="",
+            column=0,
+            published=now,
+        )
+    return replace(
+        banner,
+        title=headline or banner.title,
+        link=url or banner.link,
+    )
+
+
+def siren_html() -> str:
+    """Spinning red police beacon. CSS only, so it does not depend on an image host."""
+    return (
+        '<div class="siren" role="img" aria-label="Siren">'
+        '<div class="beacon">'
+        '<div class="glow"></div>'
+        '<div class="dome"><div class="rotor"></div><div class="glass"></div></div>'
+        '<div class="base"></div>'
+        "</div></div>"
+    )
+
+
 def render_page(
     site: dict,
     updated: datetime,
@@ -694,6 +842,7 @@ def render_page(
     splash: list[Item],
     sections: dict[str, list[Item]],
     section_order: list,
+    siren: bool = False,
 ) -> str:
     title = str(site.get("title") or "BLAKE'S DAILY NEWS")
     subtitle = str(site.get("subtitle") or "").strip()
@@ -746,20 +895,40 @@ def render_page(
             )
         column_html.append(f'<div class="col">{"".join(blocks)}</div>')
 
+    siren_block = siren_html() if siren else ""
     if banner:
         image_html = ""
-        if banner.image and banner.image.startswith(("http://", "https://")):
+        # The siren and the red headline are the whole top. A photo would sit on top of that.
+        if (
+            not siren
+            and banner.image
+            and banner.image.startswith(("http://", "https://"))
+        ):
             image_html = (
                 f'<img src="{esc(banner.image)}" alt="{esc(banner.title)}" '
                 'referrerpolicy="no-referrer" onerror="this.remove()">'
             )
+        lead_class = "lead siren-lead" if siren else "lead"
+        if banner.link.startswith(("http://", "https://")):
+            lead_html = (
+                f'<a class="{lead_class}" href="{esc(banner.link)}" target="_blank" '
+                f'rel="noopener noreferrer">{esc(banner.title)}</a>'
+            )
+        else:
+            lead_html = f'<div class="{lead_class}">{esc(banner.title)}</div>'
+        source_html = (
+            f'<div class="lead-src">{esc(banner.source)}</div>' if banner.source else ""
+        )
         banner_html = (
             '<div class="banner">'
+            f"{siren_block}"
             f"{image_html}"
-            f'<a class="lead" href="{esc(banner.link)}" target="_blank" rel="noopener noreferrer">{esc(banner.title)}</a>'
-            f'<div class="lead-src">{esc(banner.source)}</div>'
+            f"{lead_html}"
+            f"{source_html}"
             "</div>"
         )
+    elif siren:
+        banner_html = f'<div class="banner">{siren_block}</div>'
     else:
         banner_html = (
             '<p class="empty">No headlines yet. Check feeds.yml, or wait for the next update.</p>'
@@ -817,6 +986,90 @@ def render_page(
     margin: 8px auto 14px;
     max-width: 760px;
   }}
+  .siren {{
+    display: flex;
+    justify-content: center;
+    margin: 0 auto 12px;
+  }}
+  .beacon {{
+    position: relative;
+    width: 120px;
+    height: 78px;
+  }}
+  .glow {{
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    width: 150px;
+    height: 78px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(255, 20, 20, 0.72), rgba(255, 0, 0, 0) 68%);
+    animation: siren-pulse 0.7s ease-in-out infinite;
+  }}
+  .dome {{
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 64px;
+    height: 56px;
+    transform: translateX(-50%);
+    overflow: hidden;
+    border-radius: 32px 32px 10px 10px;
+    background: #2a0000;
+    box-shadow: inset 0 -10px 14px rgba(0, 0, 0, 0.35), 0 0 18px 5px rgba(220, 0, 0, 0.9);
+  }}
+  .rotor {{
+    position: absolute;
+    left: -55%;
+    top: -45%;
+    width: 210%;
+    height: 210%;
+    background: conic-gradient(
+      from 0deg,
+      #3a0000 0deg,
+      #7a0000 40deg,
+      #ff2a2a 70deg,
+      #fff 88deg,
+      #ff1a1a 108deg,
+      #5a0000 150deg,
+      #2a0000 180deg,
+      #6a0000 230deg,
+      #ff3030 262deg,
+      #fff 278deg,
+      #ff2020 300deg,
+      #3a0000 340deg
+    );
+    animation: siren-spin 0.7s linear infinite;
+  }}
+  .glass {{
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 36%);
+    pointer-events: none;
+  }}
+  .base {{
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    width: 78px;
+    height: 12px;
+    transform: translateX(-50%);
+    background: linear-gradient(#555, #111);
+    border-radius: 2px;
+    box-shadow: 0 2px 0 #000;
+  }}
+  @keyframes siren-spin {{
+    to {{ transform: rotate(360deg); }}
+  }}
+  @keyframes siren-pulse {{
+    0%, 100% {{ opacity: 0.45; }}
+    50% {{ opacity: 1; }}
+  }}
+  @media (prefers-reduced-motion: reduce) {{
+    .rotor, .glow {{ animation: none; }}
+    .glow {{ opacity: 0.85; }}
+  }}
   .banner img {{
     display: block;
     max-width: min(640px, 100%);
@@ -825,13 +1078,18 @@ def render_page(
     margin: 0 auto 10px;
     object-fit: contain;
   }}
-  a.lead {{
+  a.lead, .lead {{
     color: #c00;
     font-size: 30px;
     font-weight: 700;
     line-height: 1.15;
     text-decoration: none;
     text-transform: uppercase;
+  }}
+  a.siren-lead, .siren-lead {{
+    display: block;
+    font-size: 42px;
+    letter-spacing: 0.5px;
   }}
   a.lead:hover {{ text-decoration: underline; }}
   .lead-src {{
@@ -901,7 +1159,8 @@ def render_page(
   @media (max-width: 800px) {{
     .wrap {{ padding: 12px 14px 36px; }}
     h1 {{ font-size: 28px; }}
-    a.lead {{ font-size: 22px; }}
+    a.lead, .lead {{ font-size: 22px; }}
+    a.siren-lead, .siren-lead {{ font-size: 28px; }}
     .columns {{ grid-template-columns: 1fr; }}
     .section a, .splash a {{ font-size: 17px; }}
     .src {{ font-size: 13px; }}
