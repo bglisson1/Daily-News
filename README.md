@@ -14,6 +14,8 @@ It updates three times on weekdays and weekends:
 
 During daylight time those are exact. In winter (Eastern Standard Time) they land one hour earlier. It also updates whenever a change is saved on the `main` branch, and whenever you run it by hand.
 
+GitHub turns off scheduled updates on a public project after 60 days with no new commit. Each run turns that schedule back on with the token GitHub already gives the Action. There is no password to add. If the project has gone 45 days without a commit, the run also saves a date in a file named `.keepalive`. That file only exists so the schedule stays on. You can ignore it.
+
 Headlines older than 36 hours are left off. If the same story shows up in several places, it is shown once. The big headline is the story that showed up in the most places, with an extra lift for words like Tampa, Florida, the Bucs, and markets.
 
 ## The one setup step
@@ -37,7 +39,7 @@ You do not pick a branch. Leave Source set to GitHub Actions. After the next suc
 5. Leave the branch set to **main**.
 6. Click the green **Run workflow** button.
 
-Refresh the site in a minute or two. A red X on that run means the page did not update. Click the run and read the error. A single news site being down does not cause a red X. A typo in `feeds.yml` does.
+Refresh the site in a minute or two. Open a run with a red X and read the error. If the job named **Deploy to GitHub Pages** is green, the page itself did update. A single news site being down does not cause a red X. A typo in `feeds.yml` does.
 
 ## Change sources or keywords
 
