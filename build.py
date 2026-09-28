@@ -99,6 +99,8 @@ def main() -> int:
                 boost_keywords=config.get("boost_keywords") or [],
                 skip_url_parts=section.get("skip_url_parts") or [],
                 skip_keywords=section.get("skip_keywords") or [],
+                require_keywords=section.get("require_keywords") or [],
+                require_match=source_requires_match(section, source),
                 max_age=max_age,
                 now=now,
             )
@@ -191,6 +193,8 @@ def fetch_source(
     boost_keywords: list,
     skip_url_parts: list,
     skip_keywords: list,
+    require_keywords: list,
+    require_match: bool,
     max_age: timedelta,
     now: datetime,
 ) -> tuple[FeedReport, list[Item]]:
@@ -225,6 +229,8 @@ def fetch_source(
                 boost_keywords=boost_keywords,
                 skip_url_parts=skip_url_parts,
                 skip_keywords=skip_keywords,
+                require_keywords=require_keywords,
+                require_match=require_match,
                 max_age=max_age,
                 now=now,
             )
@@ -280,6 +286,8 @@ def entry_to_item(
     boost_keywords: list,
     skip_url_parts: list,
     skip_keywords: list,
+    require_keywords: list,
+    require_match: bool,
     max_age: timedelta,
     now: datetime,
 ) -> Item | None:
@@ -299,12 +307,16 @@ def entry_to_item(
         title, publisher = split_publisher_suffix(title)
         if publisher:
             display_source = publisher
-    if not title:
+    # Google News titles look like "Mitch McConnell - Politico". The suffix
+    # makes a topic-page label long enough to pass the first check.
+    if not title or is_junk_title(title):
         return None
 
     if any(keyword_in(title.lower(), keyword) for keyword in block_keywords):
         return None
     if section_skips(title, link, entry, skip_url_parts, skip_keywords):
+        return None
+    if not passes_required(title, link, require_keywords, require_match):
         return None
 
     boosts = [str(keyword) for keyword in boost_keywords if keyword_in(title.lower(), keyword)]
@@ -318,6 +330,27 @@ def entry_to_item(
         image=extract_image(entry),
         boosts=boosts,
     )
+
+
+def source_requires_match(section: dict, source: dict) -> bool:
+    """Mixed feeds can be limited to headlines that name a topic.
+
+    A section's require_keywords list turns that on. A source can opt out
+    with require_match: no when every story from that site already belongs,
+    such as the Bucs' own feed.
+    """
+    keywords = section.get("require_keywords") or []
+    if "require_match" in source:
+        return as_bool(source.get("require_match"))
+    return bool(keywords)
+
+
+def passes_required(title: str, link: str, keywords: list, require_match: bool) -> bool:
+    if not require_match or not keywords:
+        return True
+    path = urlsplit(link).path.lower().replace("-", " ")
+    text = f"{title.lower()} {path}"
+    return any(keyword_in(text, keyword) for keyword in keywords)
 
 
 def section_skips(title: str, link: str, entry, skip_url_parts: list, skip_keywords: list) -> bool:
@@ -505,7 +538,7 @@ def is_junk_title(title: str) -> bool:
         return True
     if text.startswith("tag:"):
         return True
-    if "latest news" in text:
+    if "latest news" in text or "latest and breaking" in text:
         return True
     return False
 
