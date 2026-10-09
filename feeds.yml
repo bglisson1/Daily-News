@@ -52,6 +52,23 @@
 #   siren_url to choose the line. Leave those two out to keep the real
 #   top story.
 #
+# HOW TO CHANGE A MARKET CARD
+#   The markets: block is the numbers at the top of the page.
+#   To rename a card, change its label.
+#   To point a card at a different Yahoo ticker, change its symbol.
+#   Keep the quotes around symbols. ^GSPC is the S&P 500.
+#   kind says what the number is:
+#     close     last finished stock session
+#     futures   overnight or premarket contract
+#     live      a price that moves while that market is open
+#     treasury  a U.S. Treasury yield (needs series and tenor)
+#     mortgage  Freddie Mac's weekly 30-year rate
+#   To hide one card, change its enabled line to no.
+#   To hide the whole market box, set enabled: no under markets.
+#   Do not delete the markets: heading. A broken markets block stops
+#   the update on purpose. A quote that fails to download does not.
+#   That card says unavailable. Old numbers are not kept.
+#
 # After you save this file on GitHub, the site rebuilds by itself.
 # =============================================================================
 
@@ -86,6 +103,101 @@ site:
   # Only used when siren_override is on. Uncomment to force a specific line:
   # siren_headline: "PRESIDENT RESIGNS"
   # siren_url: "https://example.com/the-story"
+
+# -----------------------------------------------------------------------------
+# MARKET CARDS
+# These sit under the masthead, above the big headline.
+# decimals is optional. 2 is the default. Use 0 for Bitcoin and Dow futures.
+# prefix: "$" puts a dollar sign on the price. Delete it if you do not want one.
+# futures: on an "At a glance" card adds a small premarket or live percent
+# from that contract. Delete the futures line to hide that percent.
+# Keep the quotes.
+# -----------------------------------------------------------------------------
+markets:
+  enabled: yes
+
+  # Four cards in a row. On a phone they wrap to two across.
+  at_a_glance:
+    - label: "S&P 500"
+      enabled: yes
+      symbol: "^GSPC"
+      kind: close
+      futures: "ES=F"
+
+    - label: "Dow"
+      enabled: yes
+      symbol: "^DJI"
+      kind: close
+      futures: "YM=F"
+
+    - label: "Russell 2000"
+      enabled: yes
+      symbol: "^RUT"
+      kind: close
+
+    - label: "30-yr mortgage"
+      enabled: yes
+      series: MORTGAGE30US
+      kind: mortgage
+
+  # Nasdaq, Treasury yields, futures, oil, gold, VIX, and Bitcoin.
+  more:
+    - label: "Nasdaq"
+      enabled: yes
+      symbol: "^IXIC"
+      kind: close
+
+    - label: "10-year"
+      enabled: yes
+      series: DGS10
+      tenor: "10 Yr"
+      kind: treasury
+
+    - label: "2-year"
+      enabled: yes
+      series: DGS2
+      tenor: "2 Yr"
+      kind: treasury
+
+    - label: "S&P fut"
+      enabled: yes
+      symbol: "ES=F"
+      kind: futures
+
+    - label: "Dow fut"
+      enabled: yes
+      symbol: "YM=F"
+      kind: futures
+      decimals: 0
+
+    - label: "Nasdaq fut"
+      enabled: yes
+      symbol: "NQ=F"
+      kind: futures
+
+    - label: "WTI oil"
+      enabled: yes
+      symbol: "CL=F"
+      kind: live
+      prefix: "$"
+
+    - label: "Gold"
+      enabled: yes
+      symbol: "GC=F"
+      kind: live
+      prefix: "$"
+
+    - label: "VIX"
+      enabled: yes
+      symbol: "^VIX"
+      kind: live
+
+    - label: "Bitcoin"
+      enabled: yes
+      symbol: "BTC-USD"
+      kind: live
+      prefix: "$"
+      decimals: 0
 
 # Headlines containing any of these phrases are skipped.
 # Delete a line to stop blocking that phrase. Add a line to block a new one.
@@ -456,7 +568,9 @@ sections:
         url: "https://www.theverge.com/rss/index.xml"
         max_items: 3
 
-      - name: New York Post Weird
+      # The New York Post Weird feed's newest story was October 3, 2026,
+      # outside the 36-hour window. UPI's odd-news feed is updating.
+      - name: UPI Odd News
         enabled: yes
-        url: "https://nypost.com/weird-but-true/feed/"
+        url: "https://rss.upi.com/news/odd_news.rss"
         max_items: 2
