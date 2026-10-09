@@ -6,9 +6,12 @@ You do not need to edit this file. Change feeds.yml instead, then run:
     python build.py
 
 The script reads every source in feeds.yml, drops old and blocked headlines,
-skips near-duplicate headlines, and writes index.html next to this file.
+skips near-duplicate headlines, fetches the market cards, and writes
+index.html next to this file.
 If one news site is down, that source is skipped and the rest of the page
-is still built.
+is still built. If one market quote fails, that card says unavailable.
+If every market quote fails, the page says the market data is unavailable
+and is still built. A broken feeds.yml stops the build.
 """
 
 from __future__ import annotations
@@ -28,6 +31,8 @@ from zoneinfo import ZoneInfo
 
 import feedparser
 import yaml
+
+import markets
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "feeds.yml"
@@ -120,6 +125,7 @@ def main() -> int:
         banner = apply_siren_headline(banner, site, now)
 
     updated = datetime.now(EASTERN)
+    market_report = markets.fetch_markets(config, updated)
     page = render_page(
         site=site,
         updated=updated,
@@ -128,6 +134,7 @@ def main() -> int:
         sections=sections,
         section_order=config["sections"],
         siren=siren_on,
+        market_html=markets.render_markets(market_report),
     )
     OUTPUT_PATH.write_text(page, encoding="utf-8")
 
@@ -149,6 +156,14 @@ def main() -> int:
         outlets = sorted({item.source for item in items if item.cluster_id == banner.cluster_id})
         print(f"Top story ({len(outlets)} sources): {banner.title}")
     print(f"Siren: {'ON' if siren_on else 'off'} ({siren_reason})")
+    print("--- markets ---")
+    for line in market_report.log:
+        print(line)
+    if market_report.outage:
+        print(
+            "Every market card failed. The page says market data is unavailable.",
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -193,6 +208,7 @@ def load_config(path: Path) -> dict:
                 )
     config.setdefault("block_keywords", [])
     config.setdefault("boost_keywords", [])
+    markets.validate_markets(config)
     return config
 
 
@@ -843,6 +859,7 @@ def render_page(
     sections: dict[str, list[Item]],
     section_order: list,
     siren: bool = False,
+    market_html: str = "",
 ) -> str:
     title = str(site.get("title") or "BLAKE'S DAILY NEWS")
     subtitle = str(site.get("subtitle") or "").strip()
@@ -951,7 +968,7 @@ def render_page(
     font-size: 16px;
     line-height: 1.35;
   }}
-  a {{ color: #000; }}
+  a {{ color: #000; overflow-wrap: break-word; }}
   .wrap {{
     max-width: 1100px;
     margin: 0 auto;
@@ -1144,7 +1161,6 @@ def render_page(
   .src {{
     color: #333;
     font-size: 12px;
-    white-space: nowrap;
   }}
   .empty, .footer {{
     text-align: center;
@@ -1163,17 +1179,21 @@ def render_page(
     a.siren-lead, .siren-lead {{ font-size: 28px; }}
     .columns {{ grid-template-columns: 1fr; }}
     .section a, .splash a {{ font-size: 17px; }}
+    .section li, .splash li {{ margin-bottom: 12px; }}
     .src {{ font-size: 13px; }}
   }}
+{markets.MARKET_CSS}
 </style>
 </head>
 <body>
+{markets.render_stale_banner(updated)}
 <div class="wrap">
   <header class="masthead">
     <h1>{esc(title)}</h1>
     {subtitle_html}
   </header>
   <p class="updated">Updated {esc(clock)} ET</p>
+  {market_html}
   {banner_html}
   <ul class="splash">
     {''.join(splash_html)}
@@ -1183,6 +1203,7 @@ def render_page(
   </div>
   <p class="footer">Headlines from the last {esc(max_age)} hours. Each link opens the original story.</p>
 </div>
+{markets.render_freshness_script(updated)}
 </body>
 </html>
 """

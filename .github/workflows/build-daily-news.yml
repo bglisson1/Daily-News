@@ -1,7 +1,9 @@
 # Rebuilds the page and publishes it to GitHub Pages.
 # One broken news feed does not fail this workflow. build.py skips that feed
-# and keeps going. A broken feeds.yml file will fail the run on purpose, so
-# a typo is visible in the Actions log.
+# and keeps going. One failed market quote does not fail it either. That card
+# says unavailable. If every market source fails, the page still publishes and
+# says the market data is unavailable. A broken feeds.yml, including a broken
+# markets: block, fails the run on purpose. So does a failing test.
 
 name: Build daily news
 
@@ -17,8 +19,21 @@ on:
     - cron: "30 15 * * *"
     # 20:30 UTC = 4:30 PM EDT / 3:30 PM EST
     - cron: "30 20 * * *"
+    # Catch-up clocks, 75 minutes later. GitHub sometimes skips or delays a
+    # scheduled run. If the main clock already ran, this just refreshes the
+    # page. If the main clock was skipped, this is the second try.
+    # 11:15 UTC = 7:15 AM EDT / 6:15 AM EST
+    - cron: "15 11 * * *"
+    # 16:45 UTC = 12:45 PM EDT / 11:45 AM EST
+    - cron: "45 16 * * *"
+    # 21:45 UTC = 5:45 PM EDT / 4:45 PM EST
+    - cron: "45 21 * * *"
 
   workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
 
   push:
     branches:
@@ -30,7 +45,9 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # Main stays in one line so two deploys cannot race. A pull request test
+  # uses its own line so it does not hold up the live page.
+  group: "${{ github.ref == 'refs/heads/main' && 'pages' || format('pages-{0}', github.ref) }}"
   cancel-in-progress: false
 
 jobs:
@@ -48,21 +65,27 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run tests
+        run: python -m pytest -q
+
       - name: Build the page
         run: python build.py
 
       - name: Stage the page for GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           mkdir -p _site
           cp index.html _site/index.html
 
       - name: Upload GitHub Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
